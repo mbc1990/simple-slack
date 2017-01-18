@@ -4,6 +4,7 @@ import os
 import json
 from slackclient import SlackClient
 from slacker import Slacker
+from multiprocessing import Process
 
 class SimpleSlack():
     
@@ -20,6 +21,19 @@ class SimpleSlack():
         self.user_name_map = {}
         self.channel_name_map = {}
         self.update_name_maps()
+
+    def wait_for_write_to_channel(self, channel):
+        """
+        Waits for input and writes it to channel
+        """
+        while True:
+            line = sys.stdin.readline()
+            if len(line) > 0:
+                self.slack_real_time.api_call(
+                    "chat.postMessage",
+                    channel=channel,
+                    text=line,
+                    as_user=True)
 
     def read_channel(self, channel):
         """
@@ -71,7 +85,13 @@ def main():
         conf = json.loads(f.read())
         channel = sys.argv[1]
         simpleslack = SimpleSlack(conf['SLACK_API_TOKEN'])
-        simpleslack.read_channel(channel)
+
+        # Start channel reader
+        reader = Process(target=simpleslack.read_channel, args=(channel,))
+        reader.start()
+
+        # Wait for user input on the same channel
+        simpleslack.wait_for_write_to_channel(channel)
 
 if __name__ == "__main__":
     main()

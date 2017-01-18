@@ -1,5 +1,6 @@
 import time
 import sys
+import os
 import json
 from slackclient import SlackClient
 from slacker import Slacker
@@ -13,6 +14,9 @@ class SimpleSlack():
         # Real time API
         self.slack_real_time = SlackClient(token)
 
+        # Read delay in seconds
+        self.read_delay = 1
+
         self.user_name_map = {}
         self.channel_name_map = {}
         self.update_name_maps()
@@ -22,19 +26,20 @@ class SimpleSlack():
         Reads a slack channel from the real time API
         and prints its formatted output to stdout
         """
-        READ_WEBSOCKET_DELAY = 1  # 1 second delay between reading from firehose
         if self.slack_real_time.rtm_connect():
             while True:
                 events = self.slack_real_time.rtm_read()
                 for ev in events:
                     if 'channel' not in ev:
                         continue 
+                    if type(ev['channel']) is dict:
+                        continue
                     if self.channel_name_map[ev['channel']] != channel:
                         continue
                     if 'text' not in ev:
                         continue
                     self.format_message(ev['channel'], ev['user'], ev['text'])
-                time.sleep(READ_WEBSOCKET_DELAY)
+                time.sleep(self.read_delay)
         else:
             print "Failed to connect"
 
